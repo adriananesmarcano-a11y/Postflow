@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostFlow — Generador de Contenido IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: #2a2a38;
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --accent3: #5cf0c8;
+    --text: #f0f0f8;
+    --muted: #7a7a98;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(124,92,252,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(252,92,125,0.06) 0%, transparent 50%);
+    z-index: 0; pointer-events: none;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+  header { padding: 32px 0 0; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; }
+  .logo span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .badge { background: linear-gradient(135deg, rgba(124,92,252,0.2), rgba(252,92,125,0.2)); border: 1px solid rgba(124,92,252,0.3); color: var(--accent); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+  .hero { padding: 52px 0 40px; text-align: center; }
+  .hero h1 { font-family: 'Syne', sans-serif; font-size: clamp(32px, 5vw, 52px); font-weight: 800; line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 16px; }
+  .hero h1 em { font-style: normal; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { color: var(--muted); font-size: 16px; max-width: 480px; margin: 0 auto; line-height: 1.6; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; margin-bottom: 24px; }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 8px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 13px; font-weight: 500; color: var(--muted); }
+  input, textarea { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; outline: none; width: 100%; }
+  input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,252,0.15); }
+  textarea { resize: vertical; min-height: 80px; }
+  .tone-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tone-pill { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; cursor: pointer; transition: all 0.2s; user-select: none; }
+  .tone-pill:hover { border-color: var(--accent); color: var(--text); }
+  .tone-pill.active { background: rgba(124,92,252,0.2); border-color: var(--accent); color: var(--accent); }
+  .network-group { display: flex; gap: 12px; flex-wrap: wrap; }
+  .network-chip { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.2s; user-select: none; font-size: 14px; font-weight: 500; }
+  .network-chip input { display: none; }
+  .network-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.2s; }
+  .network-chip[data-net="instagram"].selected { border-color: #e1306c; color: #e1306c; }
+  .network-chip[data-net="instagram"].selected .dot { background: #e1306c; }
+  .network-chip[data-net="tiktok"].selected { border-color: #69c9d0; color: #69c9d0; }
+  .network-chip[data-net="tiktok"].selected .dot { background: #69c9d0; }
+  .network-chip[data-net="facebook"].selected { border-color: #1877f2; color: #1877f2; }
+  .network-chip[data-net="facebook"].selected .dot { background: #1877f2; }
+  .btn-generate { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; border-radius: 12px; color: white; font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 24px; }
+  .btn-generate:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(124,92,252,0.35); }
+  .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #results { display: none; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .results-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+  .results-count { font-size: 13px; color: var(--muted); }
+  .post-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; animation: fadeUp 0.4s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .post-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .post-network { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; }
+  .post-network.instagram { background: rgba(225,48,108,0.15); color: #e1306c; }
+  .post-network.tiktok { background: rgba(105,201,208,0.15); color: #69c9d0; }
+  .post-network.facebook { background: rgba(24,119,242,0.15); color: #1877f2; }
+  .copy-btn { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .copy-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+  .copy-btn.copied { border-color: var(--accent3); color: var(--accent3); }
+  .post-caption { font-size: 14px; line-height: 1.7; color: var(--text); margin-bottom: 14px; white-space: pre-wrap; }
+  .post-hashtags { font-size: 13px; color: var(--accent); line-height: 1.6; margin-bottom: 14px; }
+  .visual-idea { background: rgba(92,240,200,0.06); border: 1px solid rgba(92,240,200,0.15); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--accent3); display: flex; align-items: flex-start; gap: 8px; }
+  .visual-idea::before { content: '🎨'; flex-shrink: 0; }
+  .error-box { background: rgba(252,92,125,0.1); border: 1px solid rgba(252,92,125,0.3); border-radius: 10px; padding: 14px 18px; color: var(--accent2); font-size: 14px; display: none; margin-top: 16px; }
+  footer { text-align: center; padding: 40px 0 32px; color: var(--muted); font-size: 12px; }
+  @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .hero { padding: 36px 0 28px; } .card { padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Post<span>Flow</span></div>
+    <div class="badge">IA Powered</div>
+  </header>
+
+  <section class="hero">
+    <h1>Contenido que <em>convierte</em><br>en segundos</h1>
+    <p>Ingresa los datos de tu negocio y genera posts listos para publicar en todas tus redes.</p>
+  </section>
+
+  <div class="card">
+    <div class="section-label">Datos del negocio</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre del negocio</label>
+        <input type="text" id="businessName" placeholder="Ej: Café Luna" />
+      </div>
+      <div class="form-group">
+        <label>Tipo de negocio</label>
+        <input type="text" id="businessType" placeholder="Ej: Cafetería, Ropa, Clínica..." />
+      </div>
+      <div class="form-group full">
+        <label>¿Qué quieres promocionar hoy?</label>
+        <textarea id="promotion" placeholder="Ej: Nuevo frappuccino de mango, 2x1 los martes..."></textarea>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:8px">Tono de comunicación</div>
+    <div class="tone-group" id="toneGroup">
+      <div class="tone-pill active" data-tone="profesional">Profesional</div>
+      <div class="tone-pill" data-tone="divertido">Divertido 😄</div>
+      <div class="tone-pill" data-tone="urgente">Urgente 🔥</div>
+      <div class="tone-pill" data-tone="elegante">Elegante ✨</div>
+      <div class="tone-pill" data-tone="cercano">Cercano y amigable</div>
+    </div>
+
+    <div class="section-label" style="margin-top:24px">Redes sociales</div>
+    <div class="network-group">
+      <label class="network-chip selected" data-net="instagram"><input type="checkbox" checked><span class="dot"></span>Instagram</label>
+      <label class="network-chip selected" data-net="tiktok"><input type="checkbox" checked><span class="dot"></span>TikTok</label>
+      <label class="network-chip selected" data-net="facebook"><input type="checkbox" checked><span class="dot"></span>Facebook</label>
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+    <button class="btn-generate" id="generateBtn" onclick="generateContent()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">✦ Generar contenido</span>
+    </button>
+  </div>
+
+  <div id="results">
+    <div class="results-header">
+      <div class="results-title">Posts generados</div>
+      <div class="results-count" id="resultsCount"></div>
+    </div>
+    <div id="postsContainer"></div>
+  </div>
+
+  <footer>PostFlow · Hecho con IA · Tu primer SaaS 🚀</footer>
+</div>
+
+<script>
+  document.querySelectorAll('.tone-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.tone-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.network-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+      chip.querySelector('input').checked = chip.classList.contains('selected');
+    });
+  });
+
+  function getSelectedNetworks() {
+    return [...document.querySelectorAll('.network-chip.selected')].map(c => c.dataset.net);
+  }
+
+  function getSelectedTone() {
+    return document.querySelector('.tone-pill.active')?.dataset.tone || 'profesional';
+  }
+
+  async function generateContent() {
+    const businessName = document.getElementById('businessName').value.trim();
+    const businessType = document.getElementById('businessType').value.trim();
+    const promotion = document.getElementById('promotion').value.trim();
+    const networks = getSelectedNetworks();
+    const tone = getSelectedTone();
+    const errorBox = document.getElementById('errorBox');
+    errorBox.style.display = 'none';
+
+    if (!businessName || !businessType || !promotion) {
+      errorBox.textContent = '⚠️ Por favor completa todos los campos.';
+      errorBox.style.display = 'block';
+      return;
+    }
+    if (networks.length === 0) {
+      errorBox.textContent = '⚠️ Selecciona al menos una red social.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnText.textContent = 'Generando con IA...';
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName, businessType, promotion, networks, tone })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error desconocido');
+      renderPosts(data.posts, networks);
+    } catch (err) {
+      errorBox.textContent = '❌ ' + (err.message || 'Error al generar. Intenta de nuevo.');
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnText.textContent = '✦ Generar de nuevo';
+    }
+  }
+
+  function renderPosts(posts, networks) {
+    const container = document.getElementById('postsContainer');
+    const resultsDiv = document.getElementById('results');
+    const count = document.getElementById('resultsCount');
+    container.innerHTML = '';
+    resultsDiv.style.display = 'block';
+    count.textContent = `${posts.length} post${posts.length > 1 ? 's' : ''} generado${posts.length > 1 ? 's' : ''}`;
+    const networkEmoji = { instagram: '📸', tiktok: '🎵', facebook: '👥' };
+    posts.forEach((post, i) => {
+      const card = document.createElement('div');
+      card.className = 'post-card';
+      card.style.animationDelay = `${i * 0.1}s`;
+      const net = (post.network || 'instagram').toLowerCase();
+      card.innerHTML = `
+        <div class="post-header">
+          <div class="post-network ${net}">${networkEmoji[net] || '📱'} ${net.charAt(0).toUpperCase() + net.slice(1)}</div>
+          <button class="copy-btn" onclick="copyPost(this, ${i})">Copiar</button>
+        </div>
+        <div class="post-caption">${escHtml(post.caption)}</div>
+        <div class="post-hashtags">${escHtml(post.hashtags)}</div>
+        <div class="visual-idea">${escHtml(post.visual_idea)}</div>`;
+      container.appendChild(card);
+    });
+    resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window._posts = posts;
+  }
+
+  function copyPost(btn, i) {
+    const p = window._posts[i];
+    navigator.clipboard.writeText(`${p.caption}\n\n${p.hashtags}`).then(() => {
+      btn.textContent = '✓ Copiado';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  function escHtml(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
