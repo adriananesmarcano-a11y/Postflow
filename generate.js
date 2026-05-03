@@ -1,7 +1,10 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { businessName, businessType, promotion, networks, tone } = req.body;
 
@@ -11,14 +14,12 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'API key no configurada' });
+    return res.status(500).json({ error: 'API key no configurada en Vercel' });
   }
-
-  const networkList = networks.join(', ');
 
   const prompt = `Eres un experto en marketing de contenidos para redes sociales en Latinoamérica.
 
-Genera posts para las siguientes redes: ${networkList}.
+Genera posts para las siguientes redes: ${networks.join(', ')}.
 
 Datos del negocio:
 - Nombre: ${businessName}
@@ -28,15 +29,16 @@ Datos del negocio:
 
 Para CADA red social genera un objeto JSON con exactamente estos campos:
 - network: nombre de la red (instagram, tiktok o facebook)
-- caption: el texto completo del post, adaptado al estilo de esa red
+- caption: el texto completo del post adaptado al estilo de esa red
 - hashtags: entre 5 y 10 hashtags relevantes separados por espacio
 - visual_idea: una idea concreta de qué imagen o video hacer (1-2 oraciones)
 
-Responde SOLO con un array JSON válido, sin texto adicional, sin backticks, sin markdown.`;
+Responde SOLO con un array JSON válido, sin texto adicional, sin backticks, sin markdown. Ejemplo:
+[{"network":"instagram","caption":"...","hashtags":"#tag1 #tag2","visual_idea":"..."}]`;
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      \`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=\${apiKey}\`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,10 +50,7 @@ Responde SOLO con un array JSON válido, sin texto adicional, sin backticks, sin
     );
 
     const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error?.message || 'Error de Gemini API');
-    }
+    if (!response.ok) throw new Error(data.error?.message || 'Error de Gemini API');
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const clean = text.replace(/```json|```/g, '').trim();
@@ -61,6 +60,6 @@ Responde SOLO con un array JSON válido, sin texto adicional, sin backticks, sin
 
   } catch (err) {
     console.error('Error:', err.message);
-    return res.status(500).json({ error: 'Error al generar contenido: ' + err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
